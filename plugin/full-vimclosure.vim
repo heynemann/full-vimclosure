@@ -1,24 +1,30 @@
 " InsertGt -> Inserts closure only if at the end of the line {{{1
 " Else continue editing
-function! s:InsertClosure( )
-    execute "normal! a}"
+function! s:InsertClosure(open, close, append_spaces)
+    let open_character = a:open
+    let close_character = a:close
+    let append_spaces = a:append_spaces
+    execute "normal! a".close_character
 
     let column = virtcol('.')
     let line_content = getline(line('.'))
+    let spaces = matchstr(line_content, '^\s*')
 
-    if (matchstr(line_content, '{') == '')
+    if (matchstr(line_content, open_character) == '')
+        execute "normal l"
         startinsert
     else
-
-        if (matchstr(line_content, '}\s*}$') != '')
+        let end_reg = close_character.'\s*'.close_character.'$'
+        if (matchstr(line_content, end_reg) != '')
             execute "normal d$"
             execute "normal i\<Cr>"
             execute "normal i\<Cr>"
+            execute "normal d$"
+            execute "normal! i".close_character
             let new_line = line('.')
-            let spaces = matchstr(line_content, '^\s*')
-            "let command = new_line.",".new_line." s/^\\s*//"
-            "execute command
-            execute "normal i}"
+            let command = new_line.",".new_line." s/^\\s*/".spaces."/"
+            execute command
+
             execute "normal k"
             execute "normal a".spaces
             execute "normal a\<Tab>"
@@ -26,16 +32,20 @@ function! s:InsertClosure( )
         else
             let character = getline('.')[column - 1]
 
-            if (character == '}')
-                let previous_characters = matchstr(line_content, '{\s*}$')
+            if (character == close_character)
+                let previous_characters = matchstr(line_content, open_character.'\s*'.close_character.'$')
                 if (len(previous_characters) == 2)
-                    execute "normal! i"." "
-                    execute "normal! i"." "
+                    if (append_spaces)
+                        execute "normal! i"." "
+                        execute "normal! i"." "
+                    endif
                     execute "normal! l"
                 endif
                 if (len(previous_characters) > 2)
                     execute "normal! l"
-                    execute "normal! i"." "
+                    if (append_spaces)
+                        execute "normal! i"." "
+                    endif
                 endif
                 startinsert
             else 
@@ -48,4 +58,7 @@ function! s:InsertClosure( )
 
 endfunction
 
-inoremap <buffer> } <Esc>:call <SID>InsertClosure()<Cr>
+inoremap <buffer> } <Esc>:call <SID>InsertClosure('{', '}', 1)<Cr>
+"inoremap <buffer> ) <Esc>:call <SID>InsertClosure('(', ')', 0)<Cr>
+"inoremap <buffer> ] <Esc>:call <SID>InsertClosure('[', ']', 0)<Cr>
+
